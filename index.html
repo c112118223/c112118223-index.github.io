@@ -1,0 +1,1475 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智慧魔鏡 - 專業健康管理系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Oxanium:wght@500;600;700&display=swap" />
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-cyan': '#0b5bd3',
+                        'status-safe': '#10b981',
+                        'status-warning': '#f59e0b',
+                        'status-danger': '#ef4444',
+                        'bg-dark': '#020617'
+                    },
+                    animation: {
+                        'scan-line': 'scan-move 3s linear infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+    :root {
+        /* --- 核心色票設定 --- */
+        --tech-bg: #05070f;              /* 背景：純黑 */
+        --tech-sidebar: #05070f;         /* 側邊欄：純黑 */
+        --tech-panel: #0a0f1a;           /* 卡片背景：極深灰 (區分層次用) */
+        
+        --tech-cyan: #0b5bd3;            /* 科技藍 (強調色) */
+        --tech-admin: #d63384;           /* 管理員色 (強調色) */
+        
+        --tech-text-main: #ffffff;       /* 主要文字：純白 (最清晰) */
+        --tech-text-sub: #bbbbbb;        /* 次要文字：亮灰 (高對比) */
+        --tech-border: rgba(255, 255, 255, 0.2); /* 邊框線條：淺白 */
+    }
+
+    /* 1. 全局設定 */
+    body {
+        background-color: var(--tech-bg);
+        background-image:
+            radial-gradient(1100px 700px at 8% -10%, rgba(11, 91, 211, 0.25), transparent 60%),
+            radial-gradient(900px 650px at 92% 8%, rgba(56, 189, 248, 0.18), transparent 55%),
+            linear-gradient(180deg, #04070f 0%, #060a16 45%, #05070f 100%);
+        color: var(--tech-text-main);
+        font-family: 'IBM Plex Sans', 'Noto Sans TC', sans-serif;
+        overflow-x: hidden;
+    }
+
+    body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(59, 130, 246, 0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(59, 130, 246, 0.06) 1px, transparent 1px);
+        background-size: 28px 28px;
+        opacity: 0.35;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+
+    /* 強制所有標題與文字為白色 */
+    h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6 {
+        color: #ffffff !important;
+        font-family: 'Oxanium', 'Noto Sans TC', sans-serif;
+        letter-spacing: 0.6px;
+    }
+
+    /* 修正 Bootstrap 的淡色文字，讓它在黑底上更亮 */
+    .text-muted {
+        color: var(--tech-text-sub) !important;
+    }
+    
+    /* 修正 Bootstrap 的連結顏色 */
+    a {
+        color: var(--tech-cyan);
+        text-decoration: none;
+    }
+    a:hover {
+        color: #fff;
+        text-shadow: 0 0 10px var(--tech-cyan);
+    }
+
+    /* ---------------- 版面配置 Layout ---------------- */
+    #wrapper {
+        display: flex;
+        width: 100%;
+        min-height: 100vh;
+        transition: all 0.3s;
+    }
+
+    /* 側邊欄 Sidebar */
+    #sidebar-wrapper {
+        min-width: 260px;
+        max-width: 260px;
+        background: var(--tech-sidebar);
+        border-right: 1px solid var(--tech-border);
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        height: 100vh;
+        z-index: 1000;
+        transition: all 0.3s;
+        transform: translateX(0);
+    }
+
+    #page-content-wrapper {
+        flex: 1;
+        padding: 20px;
+        margin-left: 260px;
+        width: calc(100% - 260px);
+        transition: all 0.3s;
+    }
+
+    body.sidebar-hidden #sidebar-wrapper {
+        transform: translateX(-260px);
+    }
+    body.sidebar-hidden #page-content-wrapper {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    @media (max-width: 768px) {
+        #sidebar-wrapper { transform: translateX(-260px); }
+        #page-content-wrapper { margin-left: 0; width: 100%; }
+        body.mobile-menu-active #sidebar-wrapper { transform: translateX(0); }
+    }
+
+    /* ---------------- 元件樣式 (高對比優化) ---------------- */
+    
+    /* 1. 選單項目 */
+    .sidebar-heading {
+        padding: 1.5rem;
+        font-size: 1.2rem;
+        color: #fff;
+        border-bottom: 1px solid var(--tech-border);
+        text-align: center;
+    }
+
+    .list-group-item {
+        background: transparent;
+        border: none;
+        color: var(--tech-text-sub); /* 預設亮灰 */
+        padding: 15px 25px;
+        font-size: 1rem;
+        transition: all 0.2s;
+        cursor: pointer;
+        border-left: 4px solid transparent;
+    }
+
+    .list-group-item:hover {
+        background: #1a1a1a;
+        color: #fff;
+    }
+
+    /* User 模式選單 */
+    .user-mode .list-group-item.active {
+        background: rgba(0, 242, 255, 0.15);
+        color: var(--tech-cyan);
+        border-left-color: var(--tech-cyan);
+        font-weight: bold;
+    }
+
+    /* Admin 模式選單 */
+    .admin-mode .list-group-item.active {
+        background: rgba(214, 51, 132, 0.15);
+        color: var(--tech-admin);
+        border-left-color: var(--tech-admin);
+        font-weight: bold;
+    }
+
+    /* 2. 卡片 (Cards) */
+    .card-tech {
+        background-color: var(--tech-panel);
+        border: 1px solid var(--tech-border);
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.8); /* 深邃陰影 */
+        margin-bottom: 20px;
+    }
+    
+    .card-header {
+        border-bottom: 1px solid var(--tech-border);
+    }
+
+    .glass-panel {
+        background: rgba(8, 12, 24, 0.72);
+        border: 1px solid rgba(11, 91, 211, 0.25);
+        backdrop-filter: blur(12px);
+        box-shadow:
+            0 10px 30px rgba(0, 0, 0, 0.55),
+            inset 0 0 18px rgba(11, 91, 211, 0.12);
+    }
+
+    .nav-btn-active {
+        background: rgba(11, 91, 211, 0.18);
+        color: #e2e8f0;
+        border: 1px solid rgba(11, 91, 211, 0.55);
+        border-radius: 12px;
+        box-shadow: 0 0 18px rgba(11, 91, 211, 0.3);
+    }
+    .nav-btn-inactive {
+        color: #9ca3af;
+        border: 1px solid transparent;
+        border-radius: 12px;
+    }
+    .nav-btn-inactive:hover {
+        background: rgba(15, 23, 42, 0.6);
+        border-color: rgba(11, 91, 211, 0.25);
+        color: #e5e7eb;
+    }
+
+    .lang-btn {
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        border: 1px solid rgba(11, 91, 211, 0.35);
+        transition: all 0.2s ease;
+    }
+    .lang-btn-active {
+        color: #0b5bd3;
+        background: rgba(11, 91, 211, 0.15);
+        box-shadow: 0 0 12px rgba(11, 91, 211, 0.35);
+    }
+    .lang-btn-inactive {
+        color: #94a3b8;
+        background: rgba(2, 6, 23, 0.6);
+    }
+
+    .ai-advice {
+        font-size: 1.25rem;
+        line-height: 1.8;
+        letter-spacing: 0.2px;
+    }
+    .ai-advice-lg {
+        font-size: 1.4rem;
+        line-height: 1.85;
+        letter-spacing: 0.25px;
+    }
+
+    .weather-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        background: rgba(11, 91, 211, 0.12);
+        border: 1px solid rgba(11, 91, 211, 0.35);
+        color: #e2e8f0;
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        font-weight: 600;
+    }
+    .weather-panel {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.2rem 0.4rem;
+    }
+    .weather-panel .temp {
+        font-size: 1.1rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: #e2e8f0;
+    }
+    .weather-panel .clock {
+        font-size: 1.8rem;
+        color: #94a3b8;
+        font-weight: 900;
+        letter-spacing: 0.05em;
+    }
+    .weather-row {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        justify-content: center;
+    }
+    .lv-prefix {
+        font-size: 0.45em;
+        letter-spacing: 0.12em;
+        vertical-align: top;
+        opacity: 0.8;
+        margin-right: 0.1em;
+    }
+
+    /* 3. 輸入框 (Form Controls) - 修正看不清楚的問題 */
+    .form-control-tech {
+        background-color: #1a1a1a; /* 深灰底 */
+        border: 1px solid #444;    /* 明顯邊框 */
+        color: #ffffff;            /* 白字 */
+    }
+    
+    .form-control-tech:focus {
+        background-color: #222;
+        border-color: var(--tech-cyan);
+        color: #ffffff;
+        box-shadow: 0 0 0 0.25rem rgba(0, 242, 255, 0.25);
+    }
+    
+    /* 修正輸入框 Placeholder 顏色 */
+    .form-control-tech::placeholder {
+        color: #666;
+    }
+    
+    /* 下拉選單修正 */
+    select.form-control-tech option {
+        background-color: #000;
+        color: #fff;
+    }
+
+    /* ---------- Global form fields (avoid white bg + white text) ---------- */
+    input[type="text"],
+    input[type="password"],
+    input[type="number"],
+    input[type="date"],
+    textarea,
+    select {
+        background-color: #0b0f1a;
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        padding: 0.6rem 0.75rem;
+        width: 100%;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+    }
+
+    input[type="text"]::placeholder,
+    input[type="password"]::placeholder,
+    input[type="number"]::placeholder,
+    input[type="date"]::placeholder,
+    textarea::placeholder {
+        color: #6b7280;
+    }
+
+    input[type="text"]:focus,
+    input[type="password"]:focus,
+    input[type="number"]:focus,
+    input[type="date"]:focus,
+    textarea:focus,
+    select:focus {
+        border-color: var(--tech-cyan);
+        box-shadow: 0 0 0 0.2rem rgba(0, 242, 255, 0.2);
+        background-color: #0f172a;
+    }
+
+    input[readonly],
+    input[disabled],
+    textarea[readonly],
+    textarea[disabled],
+    select[disabled] {
+        background-color: #0a0f1a;
+        color: #9ca3af;
+        cursor: not-allowed;
+    }
+
+    /* 4. 按鈕 (Buttons) */
+    .btn-tech {
+        background: transparent;
+        border: 1px solid var(--tech-cyan);
+        color: var(--tech-cyan);
+        font-weight: bold;
+    }
+    .btn-tech:hover {
+        background: var(--tech-cyan);
+        color: #000; /* 滑鼠移上去變黑字 */
+        box-shadow: 0 0 15px var(--tech-cyan);
+    }
+
+    /* 5. 表格 (Tables) */
+    .table {
+        color: var(--tech-text-main);
+        border-color: var(--tech-border);
+    }
+    .table thead th {
+        border-bottom: 2px solid var(--tech-cyan);
+        color: var(--tech-cyan);
+    }
+    .table-hover tbody tr:hover {
+        background-color: rgba(255,255,255,0.05);
+        color: #fff;
+    }
+
+    /* 6. 其他功能 */
+    .section-view {
+        display: none;
+        animation: fadeIn 0.4s ease-out;
+    }
+    .section-view.active { display: block; }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .menu-toggle {
+        position: relative; z-index: 1001; display: inline-flex;
+    }
+
+    .drawer-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(2, 6, 23, 0.7);
+        backdrop-filter: blur(2px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+        z-index: 900;
+    }
+
+    #sidebar-drawer {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 18rem;
+        transform: translateX(-105%);
+        transition: transform 0.25s ease;
+        z-index: 1000;
+        box-shadow: 20px 0 40px rgba(0, 0, 0, 0.6);
+    }
+    body.drawer-open #sidebar-drawer { transform: translateX(0); }
+    body.drawer-open .drawer-overlay { opacity: 1; pointer-events: auto; }
+    @media (min-width: 769px) {
+        #app { transition: margin-left 0.25s ease; }
+        body.drawer-open #app { margin-left: 18rem; }
+        .drawer-overlay { display: none; }
+    }
+
+    body:not(.app-ready) .menu-toggle,
+    body:not(.app-ready) .drawer-overlay {
+        display: none;
+    }
+    
+    /* 相機容器邊框 */
+    #camera-container {
+        border: 1px solid #333;
+    }
+</style>
+</head>
+<body class="min-h-screen">
+
+    <div id="drawer-overlay" class="drawer-overlay" onclick="toggleDrawer(false)"></div>
+
+    <div id="app" class="flex h-screen p-4 gap-4 max-w-[1800px] mx-auto">
+
+        <section id="login-view" class="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center overflow-y-auto p-4">
+            <div id="login-card" class="glass-panel p-10 w-full max-w-md text-center border-t-4 border-primary-cyan shadow-2xl relative">
+                <i class="fas fa-heart-pulse text-6xl text-primary-cyan mb-6 animate-pulse"></i>
+                <h1 id="login-title-text" data-i18n="login_title" class="text-3xl font-bold mb-2">智慧鏡健康監測</h1>
+                <p data-i18n="login_subtitle" class="text-slate-400 mb-8 text-sm">心肌梗塞預防 & 水腫程度分析</p>
+
+                <div id="login-form" class="space-y-4">
+                    <div>
+                        <input type="text" id="login-user" data-i18n-placeholder="login_user_placeholder" placeholder="帳號 (ID) / admin">
+                    </div>
+                    <div>
+                        <input type="password" id="login-pass" data-i18n-placeholder="login_pass_placeholder" placeholder="密碼">
+                        <div class="flex justify-end px-1 mt-1">
+                            <button onclick="openRecoveryModal()" class="text-slate-500 text-xs hover:text-primary-cyan hover:underline cursor-pointer" data-i18n="login_forgot">忘記密碼？</button>
+                        </div>
+                    </div>
+                    <button onclick="handleLogin()" data-i18n="login_btn" class="w-full bg-primary-cyan text-slate-900 font-bold py-3 rounded-lg hover:bg-primary-cyan mt-4 shadow-[0_0_15px_rgba(11,91,211,0.35)] transition-all">登入系統</button>
+                    <p class="text-slate-500 text-sm mt-6">還沒有帳號？ <button onclick="toggleLoginRegister(true)" class="text-primary-cyan font-bold hover:underline" data-i18n="login_create_btn">建立帳號</button></p>
+                </div>
+
+                <div id="register-form" class="hidden space-y-3 text-left">
+                    <input type="text" id="reg-id" data-i18n-placeholder="reg_id_placeholder" placeholder="設定帳號 ID (必填)">
+                    <input type="password" id="reg-pass" data-i18n-placeholder="reg_pass_placeholder" placeholder="設定密碼 (必填)">
+                    <input type="text" id="reg-name" data-i18n-placeholder="reg_name_placeholder" placeholder="真實姓名 (必填)">
+
+                    <div class="p-3 bg-slate-900/50 rounded border border-slate-700">
+                        <label class="text-xs text-primary-cyan mb-1 block" data-i18n="rec_setup_title">帳號救援設定 (忘記密碼用)</label>
+                        <select id="reg-security-q" class="mb-2 !text-xs !py-1">
+                            <option value="q1" data-i18n="q1">您第一隻寵物的名字是？</option>
+                            <option value="q2" data-i18n="q2">您就讀的小學名稱是？</option>
+                            <option value="q3" data-i18n="q3">您父親的生日是？(MMDD)</option>
+                            <option value="q4" data-i18n="q4">您最喜歡的食物是？</option>
+                        </select>
+                        <input type="text" id="reg-security-a" data-i18n-placeholder="rec_ans_placeholder" placeholder="請輸入答案" class="!py-1 !text-sm">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="reg-gender"><option value="male" data-i18n="opt_male">男</option><option value="female" data-i18n="opt_female">女</option></select>
+                        <input type="date" id="reg-birth" value="1980-01-01">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="reg-height" data-i18n-placeholder="prof_height_ph" placeholder="身高 (cm)">
+                        <input type="number" id="reg-weight" data-i18n-placeholder="prof_weight_ph" placeholder="體重 (kg)">
+                    </div>
+                    <button onclick="handleRegister()" class="w-full bg-emerald-500 text-white font-bold py-3 rounded-lg hover:bg-emerald-400 mt-4" data-i18n="reg_complete_btn">完成註冊並登入</button>
+                    <button onclick="toggleLoginRegister(false)" class="w-full text-slate-400 text-sm py-2 hover:text-white" data-i18n="reg_back_btn">返回登入</button>
+                </div>
+            </div>
+        </section>
+
+        <aside id="sidebar-drawer" class="w-72 glass-panel p-6 flex flex-col shrink-0">
+            <div class="flex flex-col items-center mb-10 border-b border-white/10 pb-8">
+                <div id="user-avatar" class="w-20 h-20 rounded-full bg-primary-cyan flex items-center justify-center text-slate-900 font-bold text-3xl mb-4 shadow-[0_0_20px_rgba(11,91,211,0.5)]">SM</div>
+                <h2 id="display-name" class="text-2xl font-bold mb-1">--</h2>
+                <p id="display-id" class="text-sm text-slate-500">ID: --</p>
+            </div>
+            <nav id="sidebar-nav" class="flex-1 space-y-4">
+            </nav>
+            <button onclick="logout()" class="mt-auto p-4 text-slate-500 hover:text-red-400 flex items-center gap-3 transition-colors rounded-lg hover:bg-white/5">
+                <i class="fas fa-sign-out-alt"></i> <span data-i18n="nav_logout">登出系統</span>
+            </button>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-y-auto no-scrollbar relative">
+            <header class="flex items-start gap-4 mb-6 px-2 pt-2">
+                <div class="flex items-start gap-3">
+                    <button class="menu-toggle glass-panel w-10 h-10 flex items-center justify-center text-primary-cyan border border-primary-cyan/30 rounded-lg" onclick="toggleDrawer()">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="flex flex-col">
+                    <h1 id="page-title-header" class="text-2xl font-bold tracking-wider" data-i18n="dash_header">健康狀態總覽</h1>
+                    <span id="role-badge" class="mt-1 w-fit bg-slate-800 px-2 py-0.5 rounded text-[10px] text-slate-400 font-bold uppercase tracking-widest" data-i18n="role_user">一般用戶</span>
+                    </div>
+                </div>
+                <div class="flex-1 flex justify-center">
+                    <div class="weather-panel">
+                        <div class="flex flex-col items-center leading-tight">
+                            <span class="clock"><span id="clock-display">--:--</span></span>
+                            <div class="weather-row">
+                                <i id="weather-icon" class="fas fa-cloud text-primary-cyan text-xl"></i>
+                                <span class="temp"><span id="temp-display">--°C</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col items-end gap-2">
+                    <div class="flex gap-2">
+                        <button onclick="setLanguage('zh')" id="btn-zh" class="lang-btn lang-btn-active">中文</button>
+                        <button onclick="setLanguage('en')" id="btn-en" class="lang-btn lang-btn-inactive">EN</button>
+                    </div>
+                </div>
+            </header>
+
+            <section id="view-dashboard" class="subview space-y-6 animate-fade-in">
+                <div id="no-data-alert" class="hidden glass-panel p-6 border-l-4 border-yellow-500 bg-yellow-500/10 mb-4">
+                    <h3 class="font-bold text-yellow-500 mb-1"><i class="fas fa-info-circle mr-2"></i><span data-i18n="no_data_title">暫無生理數據</span></h3>
+                    <p class="text-sm text-slate-300" data-i18n="no_data_desc">請點擊下方的「啟動 AI 鏡像檢測」來獲取您的第一筆健康報告。</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="glass-panel p-8 relative overflow-hidden bg-slate-900/40 min-h-[240px] group hover:border-primary-cyan/50 transition-colors">
+                        <div class="absolute -right-4 -top-8 opacity-10 text-[11rem] text-white pointer-events-none group-hover:scale-110 transition-transform duration-700"><i class="fas fa-heartbeat"></i></div>
+                        <p class="text-primary-cyan text-xs font-bold tracking-widest mb-1" data-i18n="risk_assess_label">風險評估指標</p>
+                        <h3 class="text-2xl font-bold mb-6" data-i18n="mi_risk_title">心肌梗塞風險</h3>
+                        <div class="flex items-center gap-4">
+                            <span id="dash-mi-value" class="text-7xl font-bold text-slate-600 data-font transition-all duration-500">--</span>
+                            <span id="dash-mi-status" class="bg-slate-800 text-slate-400 px-3 py-1 rounded-full text-xs font-bold" data-i18n="status_pending">待檢測</span>
+                        </div>
+                        <p id="dash-mi-desc" class="ai-advice ai-advice-lg mt-6 text-slate-400 text-sm leading-relaxed" data-i18n="mi_analysis_text">--</p>
+                    </div>
+
+                    <div class="glass-panel p-8 relative overflow-hidden bg-slate-900/40 min-h-[240px] group hover:border-amber-500/50 transition-colors">
+                        <div class="absolute -right-6 -top-4 opacity-10 text-[10rem] text-white pointer-events-none transform rotate-12 group-hover:rotate-0 transition-transform duration-700"><i class="fas fa-shoe-prints"></i></div>
+                        <p class="text-amber-500 text-xs font-bold tracking-widest mb-1 uppercase" data-i18n="edema_monitor_label">水腫監測分析</p>
+                        <h3 class="text-2xl font-bold mb-6" data-i18n="edema_title">肢體水腫等級</h3>
+                        <div class="flex items-center gap-4">
+                            <span id="dash-edema-value" class="text-5xl font-bold text-slate-600 data-font transition-all duration-500">--</span>
+                            <span id="dash-edema-status" class="bg-slate-800 text-slate-400 px-3 py-1 rounded-full text-xs font-bold" data-i18n="status_pending">待檢測</span>
+                        </div>
+                        <p id="dash-edema-desc" class="ai-advice ai-advice-lg mt-6 text-slate-400 text-sm leading-relaxed" data-i18n="edema_advice">--</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="glass-panel p-6 flex justify-between items-center bg-slate-900/30">
+                        <div><p class="text-slate-500 text-xs font-bold mb-1 uppercase" data-i18n="card_hr">心率監測</p><p id="dash-hr" class="text-3xl font-bold data-font">-- <span class="text-sm font-normal text-slate-600">bpm</span></p></div>
+                        <i class="fas fa-heart text-red-500 text-2xl animate-pulse"></i>
+                    </div>
+                    <div class="glass-panel p-6 flex justify-between items-center bg-slate-900/30">
+                        <div><p class="text-slate-500 text-xs font-bold mb-1 uppercase" data-i18n="card_hrv">心率變異 (壓力指數)</p><p id="dash-hrv" class="text-3xl font-bold data-font text-primary-cyan">-- <span class="text-sm font-normal text-slate-600">ms</span></p></div>
+                        <i class="fas fa-wave-square text-primary-cyan text-2xl"></i>
+                    </div>
+                    <div class="glass-panel p-6 flex justify-between items-center bg-slate-900/30">
+                        <div><p class="text-slate-500 text-xs font-bold mb-1 uppercase" data-i18n="card_bp">血壓數據</p><p id="dash-bp" class="text-3xl font-bold data-font">--/--</p></div>
+                        <i class="fas fa-stethoscope text-slate-500 text-2xl"></i>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+                    <button onclick="startCamera()" class="w-full glass-panel py-6 border-primary-cyan/30 bg-primary-cyan/10 text-primary-cyan font-bold text-2xl hover:bg-primary-cyan/20 hover:shadow-[0_0_20px_rgba(11,91,211,0.25)] transition-all shadow-lg flex items-center justify-center gap-4 group">
+                        <i class="fas fa-camera-retro text-3xl group-hover:scale-110 transition-transform"></i>
+                        <div class="flex flex-col text-left">
+                            <span data-i18n="btn_start_scan">啟動 AI 鏡像檢測</span>
+                            <span class="text-sm opacity-60 font-normal" data-i18n="btn_start_scan_sub">啟用攝影機進行臉部與水腫掃描</span>
+                        </div>
+                    </button>
+
+                </div>
+            </section>
+
+            <section id="view-history" class="subview hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold border-l-4 border-primary-cyan pl-3" data-i18n="history_header">生理數據追蹤</h2>
+                    <div class="bg-slate-800 p-1 rounded-lg flex gap-1">
+                        <button onclick="setChartType('mi')" id="btn-chart-mi" class="px-4 py-1.5 rounded-md text-sm range-btn-active" data-i18n="chart_mi">MI 風險</button>
+                        <button onclick="setChartType('edema')" id="btn-chart-edema" class="px-4 py-1.5 rounded-md text-sm text-slate-400" data-i18n="chart_edema">水腫等級</button>
+                    </div>
+                </div>
+
+                <div id="admin-selector-wrap" class="hidden mb-4 p-4 glass-panel bg-primary-cyan/5 border-primary-cyan/20 flex items-center gap-4">
+                    <i class="fas fa-users-cog text-primary-cyan text-xl"></i>
+                    <span class="text-sm font-bold" data-i18n="admin_select_user">切換查看對象：</span>
+                    <select id="admin-user-selector" onchange="changeAdminUser(this.value)" class="!w-64 !py-1.5 !text-sm"></select>
+                </div>
+
+                <div id="admin-med-block" class="hidden mb-4 p-4 glass-panel border-l-4 border-red-500 bg-red-500/10 flex items-start gap-3">
+                    <i class="fas fa-notes-medical text-red-400 mt-1"></i>
+                    <div>
+                        <h4 class="text-red-400 font-bold text-xs uppercase mb-1 tracking-widest" data-i18n="med_history_title">特殊病史 (Medical History)</h4>
+                        <p id="admin-med-display" class="text-white font-bold text-lg tracking-wide">--</p>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap gap-2" id="range-selector">
+                        <button onclick="applyTimeRange(7, this)" class="px-3 py-1.5 text-xs rounded bg-slate-800 hover:bg-slate-700" data-i18n="range_1w">一週</button>
+                        <button onclick="applyTimeRange(30, this)" class="px-3 py-1.5 text-xs rounded bg-slate-800 range-btn-active" data-i18n="range_1m">一個月</button>
+                        <button onclick="applyTimeRange(180, this)" class="px-3 py-1.5 text-xs rounded bg-slate-800 hover:bg-slate-700" data-i18n="range_6m">六個月</button>
+                        <button onclick="toggleCustomDate()" class="px-3 py-1.5 text-xs rounded bg-slate-800 hover:bg-slate-700" data-i18n="range_custom">自訂日期</button>
+                    </div>
+                    <div id="custom-date-wrap" class="hidden flex items-center gap-2">
+                        <input type="date" id="start-date" class="!py-1 !px-2 !text-xs !w-36">
+                        <span class="text-slate-500">~</span>
+                        <input type="date" id="end-date" class="!py-1 !px-2 !text-xs !w-36">
+                        <button onclick="applyCustomDate()" class="bg-primary-cyan text-slate-900 px-3 py-1 rounded text-xs font-bold hover:bg-primary-cyan" data-i18n="btn_apply">套用</button>
+                    </div>
+                    <button onclick="exportCsv()" class="bg-slate-800 border border-primary-cyan/20 text-primary-cyan px-4 py-1.5 rounded-md text-xs hover:bg-primary-cyan/10 transition-colors" data-i18n="btn_export">匯出 CSV</button>
+                </div>
+
+                <div class="glass-panel p-6 mb-6 h-96"><canvas id="historyChart"></canvas></div>
+
+                <div class="glass-panel overflow-hidden overflow-x-auto">
+                    <table class="table table-dark table-hover align-middle mb-0 w-full text-left text-sm">
+                        <thead class="bg-slate-800 text-primary-cyan uppercase text-xs font-bold">
+                            <tr>
+                                <th class="p-4" data-i18n="th_date">日期</th>
+                                <th class="p-4" data-i18n="th_mi">MI 指數</th>
+                                <th class="p-4" data-i18n="th_edema">水腫等級</th>
+                                <th class="p-4">HR (bpm)</th>
+                                <th class="p-4">HRV (ms)</th>
+                                <th class="p-4">BP (mmHg)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-slate-800"></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="view-profile" class="subview hidden">
+                <div class="flex items-center gap-3 mb-8 px-2">
+                    <i class="fas fa-id-card text-2xl text-primary-cyan"></i>
+                    <h1 class="text-3xl font-bold" data-i18n="profile_header">使用者檔案</h1>
+                </div>
+                <div class="space-y-6 pb-20">
+                    <div class="glass-panel p-10 bg-slate-900/40">
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8 mb-12">
+                            <div><label class="text-slate-500 text-xs mb-2 block" data-i18n="prof_name">姓名</label><input type="text" id="prof-name"></div>
+                            <div><label class="text-slate-500 text-xs mb-2 block" data-i18n="prof_gender">性別</label><select id="prof-gender"><option value="male" data-i18n="opt_male">男</option><option value="female" data-i18n="opt_female">女</option></select></div>
+                            <div><label class="text-slate-500 text-xs mb-2 block" data-i18n="prof_height">身高 (cm)</label><input type="number" id="prof-height"></div>
+                            <div><label class="text-slate-500 text-xs mb-2 block" data-i18n="prof_weight">體重 (kg)</label><input type="number" id="prof-weight"></div>
+                            <div><label class="text-slate-500 text-xs mb-2 block" data-i18n="prof_birth">出生日期</label><input type="date" id="prof-birth" onchange="updateAge()"></div>
+                            <div><label class="text-slate-500 text-xs mb-2 block" data-i18n="prof_age">年齡 (歲)</label><input id="age-field" type="number" readonly class="opacity-60 bg-slate-950 cursor-not-allowed"></div>
+                        </div>
+
+                        <div class="pt-6 border-t border-slate-800">
+                            <h3 class="text-red-400 font-bold mb-8 flex items-center gap-2"><i class="fas fa-notes-medical"></i> <span data-i18n="prof_medical_history">特殊病史</span></h3>
+                            <div class="space-y-4 border border-status-danger/20 p-4 rounded-lg bg-slate-950/20">
+                                <div class="flex justify-between items-center p-3 hover:bg-slate-800 rounded cursor-pointer"><span data-i18n="med_hypertension">高血壓 (Hypertension)</span><input type="checkbox" id="med-hy" class="w-6 h-6 accent-red-500"></div>
+                                <div class="flex justify-between items-center p-3 hover:bg-slate-800 rounded cursor-pointer"><span data-i18n="med_diabetes">糖尿病 (Diabetes)</span><input type="checkbox" id="med-di" class="w-6 h-6 accent-red-500"></div>
+                                <div class="flex justify-between items-center p-3 hover:bg-slate-800 rounded cursor-pointer"><span data-i18n="med_ckd">慢性腎臟病 (CKD)</span><input type="checkbox" id="med-ck" class="w-6 h-6 accent-red-500"></div>
+                                <div class="p-4 bg-slate-800/30 rounded-lg">
+                                    <div class="flex justify-between items-center mb-4"><span data-i18n="med_family_title">其他疾病家族史</span><input type="checkbox" checked id="family-check" class="w-6 h-6 accent-red-500" onchange="toggleFamilyText(this.checked)"></div>
+                                    <textarea id="family-text" class="text-sm h-24" data-i18n-placeholder="med_family_placeholder" placeholder="描述家族成員與診斷..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onclick="saveProfile()" class="w-full mt-10 mb-12 bg-primary-cyan text-slate-900 font-bold py-4 rounded-xl text-lg hover:bg-primary-cyan transition-all shadow-lg" data-i18n="btn_save">儲存基本資料</button>
+
+                        <div class="border-t-2 border-slate-800 pt-10">
+                            <h3 class="text-slate-400 text-sm font-bold mb-6 flex items-center gap-2 uppercase tracking-widest"><i class="fas fa-shield-halved"></i> <span data-i18n="sec_zone_title">帳號安全管理區</span></h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="text-slate-500 text-xs mb-2 block" data-i18n="sec_manage_id">管理帳號 ID</label>
+                                    <button onclick="openAuthModal('id')" class="w-full text-left bg-slate-800/50 border border-slate-700 text-slate-300 py-3 px-4 rounded-lg hover:border-primary-cyan hover:text-white transition-colors flex justify-between items-center group">
+                                        <span data-i18n="btn_change_id">更改使用者 ID</span>
+                                        <i class="fas fa-pen text-xs opacity-50 group-hover:opacity-100"></i>
+                                    </button>
+                                </div>
+                                <div>
+                                    <label class="text-slate-500 text-xs mb-2 block" data-i18n="sec_manage_pass">管理密碼</label>
+                                    <button onclick="openAuthModal('pass')" class="w-full text-left bg-slate-800/50 border border-slate-700 text-red-400 py-3 px-4 rounded-lg hover:border-red-500 hover:text-red-300 transition-colors flex justify-between items-center group">
+                                        <span data-i18n="btn_change_pass">更改登入密碼</span>
+                                        <i class="fas fa-key text-xs opacity-50 group-hover:opacity-100"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-600 mt-4 text-center" data-i18n="sec_relogin_note">修改 ID 或密碼後，系統將要求重新登入。</p>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
+
+            <section id="view-admin-manage" class="subview hidden">
+                <h1 class="text-3xl font-bold mb-8 flex items-center gap-3"><i class="fas fa-users-gear text-amber-500"></i> <span data-i18n="admin_panel_title">管理員面板：帳號管理</span></h1>
+                <div class="glass-panel overflow-hidden">
+                    <table class="table table-dark table-hover align-middle mb-0 w-full text-left text-sm">
+                        <thead class="bg-slate-800 text-primary-cyan font-bold uppercase">
+                            <tr>
+                                <th class="p-4" data-i18n="th_adm_id">帳號 ID</th>
+                                <th class="p-4" data-i18n="th_adm_name">姓名</th>
+                                <th class="p-4" data-i18n="th_adm_reg">註冊時間</th>
+                                <th class="p-4" data-i18n="th_adm_role">權限</th>
+                                <th class="p-4" data-i18n="th_adm_action">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-user-list" class="divide-y divide-slate-800"></tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="camera-overlay" class="hidden fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center">
+        <video id="webcam-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+
+        <div class="absolute inset-0 pointer-events-none">
+            <div class="w-full h-1 bg-primary-cyan/50 shadow-[0_0_15px_rgba(11,91,211,0.8)] animate-scan-line"></div>
+            <div class="absolute top-10 left-10 w-16 h-16 border-t-4 border-l-4 border-primary-cyan rounded-tl-xl"></div>
+            <div class="absolute top-10 right-10 w-16 h-16 border-t-4 border-r-4 border-primary-cyan rounded-tr-xl"></div>
+            <div class="absolute bottom-20 left-10 w-16 h-16 border-b-4 border-l-4 border-primary-cyan rounded-bl-xl"></div>
+            <div class="absolute bottom-20 right-10 w-16 h-16 border-b-4 border-r-4 border-primary-cyan rounded-br-xl"></div>
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 border border-primary-cyan/30 rounded-full flex items-center justify-center">
+                <div class="w-2 h-2 bg-primary-cyan rounded-full animate-ping"></div>
+                <div class="absolute inset-0 border border-primary-cyan/10 rounded-full animate-pulse"></div>
+            </div>
+
+            <div id="scan-status-text" class="absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/60 px-6 py-2 rounded-full border border-primary-cyan/50 text-primary-cyan text-sm font-mono tracking-widest shadow-lg text-center">
+                <i class="fas fa-circle-notch fa-spin mr-2"></i>--
+            </div>
+        </div>
+
+        <button onclick="stopCamera()" class="absolute bottom-10 bg-red-500/80 hover:bg-red-600 text-white px-8 py-3 rounded-full font-bold backdrop-blur-sm transition-all border border-red-400 shadow-lg hover:shadow-red-500/50 z-50 pointer-events-auto">
+            <i class="fas fa-power-off mr-2"></i> <span data-i18n="btn_stop_scan">停止掃描</span>
+        </button>
+    </div>
+
+    <div id="auth-modal" class="hidden fixed inset-0 z-[150] bg-black/80 flex items-center justify-center p-4">
+        <div class="glass-panel p-8 w-full max-w-sm bg-slate-900 shadow-2xl relative">
+            <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white"><i class="fas fa-times"></i></button>
+
+            <h3 id="auth-modal-title" class="text-xl font-bold mb-6 text-white">--</h3>
+
+            <div id="modal-content-pass" class="space-y-4 hidden">
+                <div>
+                    <label class="text-xs text-slate-400 mb-1 block" data-i18n="lbl_old_pass">請輸入舊密碼</label>
+                    <input type="password" id="modal-old-pass" data-i18n-placeholder="ph_old_pass" placeholder="輸入舊密碼">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 mb-1 block" data-i18n="lbl_new_pass">設定新密碼</label>
+                    <input type="password" id="modal-new-pass" data-i18n-placeholder="ph_new_pass" placeholder="設定新密碼">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 mb-1 block" data-i18n="lbl_confirm_pass">再次輸入新密碼</label>
+                    <input type="password" id="modal-confirm-pass" data-i18n-placeholder="ph_confirm_pass" placeholder="再次輸入新密碼">
+                </div>
+                <div class="text-right">
+                    <button onclick="openRecoveryModal()" class="text-xs text-primary-cyan hover:underline" data-i18n="login_forgot">忘記密碼？</button>
+                </div>
+                <button onclick="submitAuthChange('pass')" class="w-full bg-status-danger text-white font-bold py-2 rounded mt-2 hover:bg-red-600" data-i18n="btn_confirm_change">確認修改</button>
+            </div>
+
+            <div id="modal-content-id" class="space-y-4 hidden">
+                <p class="text-sm text-yellow-500 bg-yellow-500/10 p-3 rounded mb-4"><i class="fas fa-exclamation-triangle mr-2"></i><span data-i18n="warn_id_change">修改 ID 後，您需要使用新 ID 重新登入。</span></p>
+                <div>
+                    <label class="text-xs text-slate-400 mb-1 block" data-i18n="lbl_new_id">新帳號 ID</label>
+                    <input type="text" id="modal-new-id" data-i18n-placeholder="ph_new_id" placeholder="設定新 ID">
+                </div>
+                <button onclick="submitAuthChange('id')" class="w-full bg-primary-cyan text-slate-900 font-bold py-2 rounded mt-2 hover:bg-primary-cyan" data-i18n="btn_confirm_change">確認修改</button>
+            </div>
+
+            <div id="modal-content-recovery" class="space-y-4 hidden">
+                <div id="rec-step-1">
+                    <p class="text-sm text-slate-400 mb-4" data-i18n="rec_instr_step1">請輸入您的帳號 ID 以進行驗證。</p>
+                    <input type="text" id="rec-user-id" data-i18n-placeholder="rec_ph_id" placeholder="請輸入您的 ID">
+                    <button onclick="verifyRecoveryStep1()" class="w-full bg-primary-cyan text-slate-900 font-bold py-2 rounded mt-4" data-i18n="btn_next">下一步</button>
+                </div>
+
+                <div id="rec-step-2" class="hidden">
+                    <p class="text-xs text-slate-500 mb-1" data-i18n="rec_sec_q_label">安全性提問：</p>
+                    <p id="rec-question-text" class="text-white font-bold mb-4 bg-slate-800 p-2 rounded">--</p>
+                    <input type="text" id="rec-answer" data-i18n-placeholder="rec_ans_placeholder" placeholder="請輸入答案">
+                    <button onclick="verifyRecoveryStep2()" class="w-full bg-primary-cyan text-slate-900 font-bold py-2 rounded mt-4" data-i18n="btn_verify">驗證答案</button>
+                </div>
+
+                <div id="rec-step-3" class="hidden">
+                    <p class="text-sm text-status-safe mb-2"><i class="fas fa-check-circle"></i> <span data-i18n="rec_success">驗證成功！請設定新密碼。</span></p>
+                    <input type="password" id="rec-new-pass" data-i18n-placeholder="ph_new_pass" placeholder="新密碼" class="mb-2">
+                    <button onclick="submitRecoveryReset()" class="w-full bg-emerald-500 text-white font-bold py-2 rounded mt-2" data-i18n="btn_reset_login">重設並登入</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const i18n = {
+            zh: {
+                login_title: "智慧鏡健康監測", login_subtitle: "心肌梗塞預防 & 水腫分析", login_user_placeholder: "帳號 ID", login_pass_placeholder: "密碼", login_btn: "登入系統", login_forgot: "忘記密碼？", login_create_btn: "建立帳號", reg_complete_btn: "完成註冊並登入", reg_back_btn: "返回登入",
+                nav_dashboard: "總覽儀表板", nav_history: "歷史數據", nav_profile: "用戶資料", nav_logout: "登出系統", nav_admin_manage: "帳號管理", nav_admin_monitor: "數據監控",
+                dash_header: "健康狀態總覽", common_today: "今日", mi_risk_title: "心肌梗塞風險", status_low: "低風險", status_mild: "輕微水腫", status_pending: "待檢測",
+                edema_title: "肢體水腫等級", history_header: "生理數據追蹤", chart_mi: "心肌梗塞 風險", chart_edema: "水腫等級",
+                range_1w: "一週", range_1m: "一個月", range_6m: "六個月", range_custom: "自訂日期", btn_apply: "套用", btn_export: "匯出 CSV",
+                admin_select_user: "切換對象：", profile_header: "使用者檔案", opt_male: "男", opt_female: "女", btn_save: "儲存基本資料", prof_medical_history: "特殊病史", med_family_placeholder: "描述家族病史...",
+                mi_analysis_text: "AI 分析：過去 24 小時 HRV 波動穩定，無缺血性變化特徵。", edema_advice: "建議：下午 5 點後請抬高雙腿 15 分鐘以促進循環。",
+                no_data_title: "暫無生理數據", no_data_desc: "請點擊下方的「啟動 AI 鏡像檢測」來獲取您的第一筆健康報告。",
+                risk_assess_label: "風險評估指標", edema_monitor_label: "水腫監測分析", card_hr: "心率監測", card_hrv: "心率變異 (壓力指數)", card_bp: "血壓數據",
+                btn_start_scan: "啟動 AI 鏡像檢測", btn_start_scan_sub: "啟用攝影機進行臉部與水腫掃描", btn_stop_scan: "停止掃描",
+                scan_init: "系統正在啟動攝影機...", scan_analyzing: "AI 分析中：臉部微血管掃描...", scan_complete: "檢測完成！",
+                role_user: "一般用戶", role_admin: "管理員",
+                // Profile & Med
+                prof_name: "姓名", prof_gender: "性別", prof_height: "身高 (cm)", prof_weight: "體重 (kg)", prof_birth: "出生日期", prof_age: "年齡 (歲)",
+                prof_height_ph: "身高 (cm)", prof_weight_ph: "體重 (kg)",
+                med_hypertension: "高血壓 (Hypertension)", med_diabetes: "糖尿病 (Diabetes)", med_ckd: "慢性腎臟病 (CKD)", med_family_title: "其他疾病家族史",
+                med_history_title: "特殊病史 (Medical History)", med_none: "無",
+                // Admin Table
+                admin_panel_title: "管理員面板：帳號管理", th_adm_id: "帳號 ID", th_adm_name: "姓名", th_adm_reg: "註冊時間", th_adm_role: "權限", th_adm_action: "操作",
+                btn_upgrade: "升級 Admin", btn_downgrade: "降級 User", btn_delete: "刪除",
+                // Security & Modals
+                sec_zone_title: "帳號安全管理區", sec_manage_id: "管理帳號 ID", sec_manage_pass: "管理密碼", btn_change_id: "更改使用者 ID", btn_change_pass: "更改登入密碼",
+                sec_relogin_note: "修改 ID 或密碼後，系統將要求重新登入。",
+                modal_title_pass: "修改密碼", modal_title_id: "修改 ID", modal_title_rec: "忘記密碼 (帳號救援)",
+                lbl_old_pass: "請輸入舊密碼", lbl_new_pass: "設定新密碼", lbl_confirm_pass: "再次輸入新密碼", ph_old_pass: "輸入舊密碼", ph_new_pass: "設定新密碼", ph_confirm_pass: "再次輸入新密碼",
+                btn_confirm_change: "確認修改", warn_id_change: "修改 ID 後，您需要使用新 ID 重新登入。", lbl_new_id: "新帳號 ID", ph_new_id: "設定新 ID",
+                rec_setup_title: "帳號救援設定 (忘記密碼用)", rec_ans_placeholder: "請輸入答案",
+                q1: "您第一隻寵物的名字是？", q2: "您就讀的小學名稱是？", q3: "您父親的生日是？(MMDD)", q4: "您最喜歡的食物是？",
+                rec_instr_step1: "請輸入您的帳號 ID 以進行驗證。", rec_ph_id: "請輸入您的 ID", btn_next: "下一步",
+                rec_sec_q_label: "安全性提問：", btn_verify: "驗證答案", rec_success: "驗證成功！請設定新密碼。", btn_reset_login: "重設並登入",
+                th_date: "日期", th_mi: "MI 指數", th_edema: "水腫等級",
+                // Reg placeholders
+                reg_id_placeholder: "設定帳號 ID (必填)", reg_pass_placeholder: "設定密碼 (必填)", reg_name_placeholder: "真實姓名 (必填)"
+            },
+            en: {
+                login_title: "Smart Mirror", login_subtitle: "Integrated Health Tracking System", login_user_placeholder: "Account ID", login_pass_placeholder: "Password", login_btn: "Login", login_forgot: "Forgot Password?", login_create_btn: "Create Account", reg_complete_btn: "Complete & Login", reg_back_btn: "Back to Login",
+                nav_dashboard: "Dashboard", nav_history: "History", nav_profile: "Profile", nav_logout: "Logout", nav_admin_manage: "User Management", nav_admin_monitor: "Data Monitor",
+                dash_header: "Health Overview", common_today: "Today", mi_risk_title: "Risk of myocardial infarction", status_low: "Low Risk", status_mild: "Mild Edema", status_pending: "Pending",
+                edema_title: "Edema Level", history_header: "Vitals History", chart_mi: "Risk of myocardial infarction", chart_edema: "Edema Level",
+                range_1w: "1 Week", range_1m: "1 Month", range_6m: "6 Months", range_custom: "Custom", btn_apply: "Apply", btn_export: "Export CSV",
+                admin_select_user: "Select User:", profile_header: "User Profile", opt_male: "Male", opt_female: "Female", btn_save: "Save Basic Info", prof_medical_history: "Medical History", med_family_placeholder: "Family history details...",
+                mi_analysis_text: "AI Analysis: Stable HRV in last 24h. No ischemic signs.", edema_advice: "Advice: Elevate legs for 15 mins after 5 PM.",
+                no_data_title: "No Vitals Data", no_data_desc: "Please click 'Start AI Mirror Scan' below to get your first health report.",
+                risk_assess_label: "RISK ASSESSMENT", edema_monitor_label: "EDEMA MONITOR", card_hr: "Heart Rate", card_hrv: "HRV (Stress)", card_bp: "Blood Pressure",
+                btn_start_scan: "Start AI Mirror Scan", btn_start_scan_sub: "Enable Camera for Facial & Edema Analysis", btn_stop_scan: "Stop Scan",
+                scan_init: "Initializing Camera...", scan_analyzing: "AI ANALYZING: FACE_VASCULAR...", scan_complete: "SCAN COMPLETE!",
+                role_user: "User", role_admin: "Admin",
+                // Profile & Med
+                prof_name: "Name", prof_gender: "Gender", prof_height: "Height (cm)", prof_weight: "Weight (kg)", prof_birth: "Date of Birth", prof_age: "Age",
+                prof_height_ph: "Height (cm)", prof_weight_ph: "Weight (kg)",
+                med_hypertension: "Hypertension", med_diabetes: "Diabetes", med_ckd: "Chronic Kidney Disease (CKD)", med_family_title: "Family Medical History",
+                med_history_title: "Medical History", med_none: "None",
+                // Admin Table
+                admin_panel_title: "Admin Panel: User Management", th_adm_id: "Account ID", th_adm_name: "Name", th_adm_reg: "Reg. Date", th_adm_role: "Role", th_adm_action: "Action",
+                btn_upgrade: "Promote Admin", btn_downgrade: "Demote User", btn_delete: "Delete",
+                // Security & Modals
+                sec_zone_title: "Account Security Zone", sec_manage_id: "Manage User ID", sec_manage_pass: "Manage Password", btn_change_id: "Change User ID", btn_change_pass: "Change Password",
+                sec_relogin_note: "System requires re-login after ID or password change.",
+                modal_title_pass: "Change Password", modal_title_id: "Change User ID", modal_title_rec: "Forgot Password (Recovery)",
+                lbl_old_pass: "Enter Old Password", lbl_new_pass: "Set New Password", lbl_confirm_pass: "Confirm New Password", ph_old_pass: "Old Password", ph_new_pass: "New Password", ph_confirm_pass: "Confirm Password",
+                btn_confirm_change: "Confirm Change", warn_id_change: "You must login again with the new ID.", lbl_new_id: "New Account ID", ph_new_id: "New ID",
+                rec_setup_title: "Account Recovery Setup", rec_ans_placeholder: "Your Answer",
+                q1: "What is the name of your first pet?", q2: "What is the name of your elementary school?", q3: "What is your father's birthday? (MMDD)", q4: "What is your favorite food?",
+                rec_instr_step1: "Please enter your Account ID to verify.", rec_ph_id: "Enter User ID", btn_next: "Next",
+                rec_sec_q_label: "Security Question:", btn_verify: "Verify Answer", rec_success: "Verification Success! Set new password.", btn_reset_login: "Reset & Login",
+                th_date: "Date", th_mi: "MI Index", th_edema: "Edema Lv",
+                // Reg placeholders
+                reg_id_placeholder: "Set Account ID (Required)", reg_pass_placeholder: "Set Password (Required)", reg_name_placeholder: "Full Name (Required)"
+            }
+        };
+
+        const questionTextMap = {
+            "q1": "q1", "q2": "q2", "q3": "q3", "q4": "q4" // Mapping keys to i18n keys
+        };
+
+        // Update DB
+        let userDataMap = JSON.parse(localStorage.getItem('health_db_v12_bi')) || {
+            "admin": { name: "管理員", pass: "1234", role: "admin", regDate: "2025-01-01" },
+            "U-DEMO": {
+                name: "王大明 (Demo)", pass: "1234", role: "user", regDate: "2025-11-20",
+                gender: "male", birth: "1960-01-01", height: 175, weight: 70, history: [],
+                securityQ: "q1", securityA: "小白", medicalStr: ""
+            },
+            "U-1002": {
+                name: "李小美 (New)", pass: "1234", role: "user", regDate: "2025-12-20",
+                gender: "female", birth: "1990-05-20", height: 160, weight: 50, history: [],
+                securityQ: "q4", securityA: "拉麵", medicalStr: ""
+            }
+        };
+
+        function generateHistory(uid) {
+            const h = [];
+            const r = (uid === "admin" || Math.random() > 0.5) ? 12 : 35;
+            for (let i = 0; i < 180; i++) {
+                let d = new Date(); d.setDate(d.getDate() - i);
+                h.push({
+                    date: d.toISOString().split('T')[0],
+                    mi: Math.floor(Math.random() * 8) + r,
+                    edema: Math.floor(Math.random() * 2) + 1,
+                    hr: 70 + Math.floor(Math.random() * 20),
+                    hrv: 40 + Math.floor(Math.random() * 30),
+                    bp: `${110 + Math.floor(Math.random() * 20)}/${70 + Math.floor(Math.random() * 15)}`
+                });
+            }
+            return h;
+        }
+        if (!userDataMap["U-DEMO"].history.length) userDataMap["U-DEMO"].history = generateHistory("U-DEMO");
+
+        let currentLang = 'zh', currentRole = 'user', loggedInUser = '', activeUserId = '', currentChartType = 'mi', chartInstance = null, videoStream = null, weatherTimer = null;
+
+        function setLanguage(l) {
+            currentLang = l;
+            document.querySelectorAll('.lang-btn').forEach(b => b.className = 'lang-btn lang-btn-inactive');
+            document.getElementById(`btn-${l}`).className = 'lang-btn lang-btn-active';
+            const data = i18n[currentLang];
+
+            // Update Text
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (data[key]) el.innerText = data[key];
+            });
+            // Update Placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (data[key]) el.placeholder = data[key];
+            });
+
+            // Refresh Components
+            if (loggedInUser) setupSidebar(); // Refresh sidebar text
+            if (chartInstance) applyTimeRange(30);
+            if (!document.getElementById('view-admin-manage').classList.contains('hidden')) renderAdminUserTable();
+            if (!document.getElementById('view-history').classList.contains('hidden')) updateMedicalDisplay();
+
+            // Refresh Options text
+            document.querySelectorAll('#reg-security-q option').forEach(opt => {
+                opt.innerText = data[opt.value];
+            });
+        }
+
+        function toggleDrawer(force) {
+            const isOpen = document.body.classList.contains('drawer-open');
+            const next = typeof force === 'boolean' ? force : !isOpen;
+            document.body.classList.toggle('drawer-open', next);
+        }
+
+        function toggleLoginRegister(isReg) {
+            document.getElementById('login-form').classList.toggle('hidden', isReg);
+            document.getElementById('register-form').classList.toggle('hidden', !isReg);
+            document.getElementById('login-title-text').innerText = isReg ? (currentLang === 'zh' ? '建立新帳號' : 'Create Account') : i18n[currentLang].login_title;
+        }
+
+        function handleRegister() {
+            const id = document.getElementById('reg-id').value.trim();
+            const pass = document.getElementById('reg-pass').value;
+            const name = document.getElementById('reg-name').value;
+            const sq = document.getElementById('reg-security-q').value;
+            const sa = document.getElementById('reg-security-a').value.trim();
+
+            if (!id || !pass || !name || !sa) return alert(currentLang === 'zh' ? "請填寫所有欄位" : "Please fill all fields");
+            if (userDataMap[id]) return alert(currentLang === 'zh' ? "ID 已存在" : "ID already exists");
+
+            userDataMap[id] = {
+                name: name, pass: pass, role: "user", regDate: new Date().toISOString().split('T')[0],
+                gender: document.getElementById('reg-gender').value,
+                birth: document.getElementById('reg-birth').value,
+                height: document.getElementById('reg-height').value,
+                weight: document.getElementById('reg-weight').value,
+                history: [],
+                securityQ: sq,
+                securityA: sa, medicalStr: ""
+            };
+            saveData(); alert(currentLang === 'zh' ? "註冊成功！" : "Registration Successful!"); loginSuccess(id);
+        }
+
+        function handleLogin() {
+            const id = document.getElementById('login-user').value.trim();
+            const pass = document.getElementById('login-pass').value;
+            if (userDataMap[id] && userDataMap[id].pass === pass) loginSuccess(id);
+            else alert(currentLang === 'zh' ? "帳號或密碼錯誤" : "Invalid ID or Password");
+        }
+
+        function loginSuccess(uid) {
+            loggedInUser = uid; activeUserId = uid; currentRole = userDataMap[uid].role;
+            document.getElementById('login-view').classList.add('hidden');
+            document.body.classList.add('app-ready');
+            document.body.classList.add('drawer-open');
+            setupApp();
+        }
+
+        function setupApp() {
+            const user = userDataMap[loggedInUser];
+            const selector = document.getElementById('admin-user-selector');
+            selector.innerHTML = "";
+            document.getElementById('display-name').innerText = user.name;
+            document.getElementById('display-id').innerText = "ID: " + loggedInUser;
+            document.getElementById('role-badge').setAttribute('data-i18n', user.role === 'admin' ? 'role_admin' : 'role_user');
+
+            setupSidebar(); // Setup nav based on role
+            if (weatherTimer) clearInterval(weatherTimer);
+            updateWeather();
+            weatherTimer = setInterval(updateWeather, 10 * 60 * 1000);
+            if (weatherTimer) clearInterval(weatherTimer);
+            updateWeather();
+            weatherTimer = setInterval(updateWeather, 10 * 60 * 1000);
+
+            if (user.role === 'admin') {
+                Object.keys(userDataMap).forEach(k => {
+                    selector.options.add(new Option(`${userDataMap[k].name} (${k})`, k));
+                });
+                if (selector.options.length > 0) activeUserId = selector.options[0].value;
+                navTo('admin-manage');
+            } else {
+                navTo('dashboard');
+            }
+            setLanguage(currentLang); // Apply lang to new elements
+        }
+
+        function setupSidebar() {
+            const nav = document.getElementById('sidebar-nav');
+            const user = userDataMap[loggedInUser];
+            const t = i18n[currentLang];
+
+            if (user.role === 'admin') {
+                nav.innerHTML = `
+                            <button onclick="navTo('admin-manage')" id="nav-admin-manage" class="w-full flex items-center gap-3 p-4 nav-btn-active"><i class="fas fa-user-shield"></i> <span data-i18n="nav_admin_manage">${t.nav_admin_manage}</span></button>
+                            <button onclick="navTo('history')" id="nav-history" class="w-full flex items-center gap-3 p-4 nav-btn-inactive"><i class="fas fa-users-viewfinder"></i> <span data-i18n="nav_admin_monitor">${t.nav_admin_monitor}</span></button>
+                        `;
+            } else {
+                nav.innerHTML = `
+                            <button onclick="navTo('dashboard')" id="nav-dashboard" class="w-full flex items-center gap-3 p-4 nav-btn-active"><i class="fas fa-chart-line"></i> <span data-i18n="nav_dashboard">${t.nav_dashboard}</span></button>
+                            <button onclick="navTo('history')" id="nav-history" class="w-full flex items-center gap-3 p-4 nav-btn-inactive"><i class="fas fa-history"></i> <span data-i18n="nav_history">${t.nav_history}</span></button>
+                            <button onclick="navTo('profile')" id="nav-profile" class="w-full flex items-center gap-3 p-4 nav-btn-inactive"><i class="fas fa-user-cog"></i> <span data-i18n="nav_profile">${t.nav_profile}</span></button>
+                        `;
+            }
+        }
+
+        function navTo(view) {
+            toggleDrawer(false);
+            document.querySelectorAll('.subview').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`view-${view}`).classList.remove('hidden');
+            document.querySelectorAll('#sidebar-nav button').forEach(b => b.classList.replace('nav-btn-active', 'nav-btn-inactive'));
+            if (document.getElementById(`nav-${view}`)) document.getElementById(`nav-${view}`).classList.replace('nav-btn-inactive', 'nav-btn-active');
+
+            document.getElementById('admin-selector-wrap').classList.toggle('hidden', !(view === 'history' && userDataMap[loggedInUser].role === 'admin'));
+
+            if (view === 'dashboard') updateDashboard();
+            if (view === 'history') { updateMedicalDisplay(); applyTimeRange(30); }
+            if (view === 'profile') loadProfile();
+            if (view === 'admin-manage') renderAdminUserTable();
+        }
+
+        async function updateWeather() {
+            const tempEl = document.getElementById('temp-display');
+            if (!tempEl) return;
+            const setTempText = (text) => { tempEl.innerText = text; };
+
+            if (!navigator.geolocation) {
+                setTempText("--°C");
+                return;
+            }
+
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                try {
+                    const lat = pos.coords.latitude.toFixed(4);
+                    const lon = pos.coords.longitude.toFixed(4);
+                    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode&temperature_unit=celsius&timezone=auto`;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error("weather_fetch_failed");
+                    const data = await res.json();
+                    const temp = data?.current?.temperature_2m;
+                    const code = data?.current?.weathercode;
+                    const unit = data?.current_units?.temperature_2m || "°C";
+                    if (typeof temp === 'number') setTempText(`${Math.round(temp)}${unit}`);
+                    else setTempText("--°C");
+                    updateWeatherIcon(code);
+                } catch {
+                    setTempText("--°C");
+                }
+            }, () => {
+                setTempText("--°C");
+            }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 });
+        }
+
+        function updateWeatherIcon(code) {
+            const icon = document.getElementById('weather-icon');
+            if (!icon || typeof code !== 'number') return;
+            let cls = "fas fa-cloud";
+            if (code === 0) cls = "fas fa-sun";
+            else if (code === 1 || code === 2) cls = "fas fa-cloud-sun";
+            else if (code === 3) cls = "fas fa-cloud";
+            else if (code === 45 || code === 48) cls = "fas fa-smog";
+            else if ([51,53,55,56,57].includes(code)) cls = "fas fa-cloud-drizzle";
+            else if ([61,63,65,66,67].includes(code)) cls = "fas fa-cloud-rain";
+            else if ([71,73,75,77].includes(code)) cls = "fas fa-snowflake";
+            else if ([80,81,82].includes(code)) cls = "fas fa-cloud-showers-heavy";
+            else if ([85,86].includes(code)) cls = "fas fa-snowflake";
+            else if (code === 95) cls = "fas fa-bolt";
+            else if (code === 96 || code === 99) cls = "fas fa-cloud-bolt";
+            icon.className = `${cls} text-primary-cyan text-xl`;
+        }
+
+        function updateDashboard() {
+            const hist = userDataMap[activeUserId].history;
+            const noData = !hist || hist.length === 0;
+            document.getElementById('no-data-alert').classList.toggle('hidden', !noData);
+
+            if (noData) {
+                document.getElementById('dash-mi-value').innerText = "--";
+                document.getElementById('dash-edema-value').innerText = "--";
+                document.getElementById('dash-hr').innerText = "--";
+                document.getElementById('dash-hrv').innerText = "--";
+                document.getElementById('dash-bp').innerText = "--/--";
+                return;
+            }
+
+            const d = hist[0];
+            document.getElementById('dash-mi-value').innerText = d.mi + "%";
+            document.getElementById('dash-edema-value').innerHTML = `<span class="lv-prefix">Lv.</span>${d.edema}`;
+            document.getElementById('dash-mi-value').className = d.mi > 20 ? "text-7xl font-bold text-status-danger data-font" : "text-7xl font-bold text-status-safe data-font";
+            document.getElementById('dash-edema-value').className = d.edema >= 3 ? "text-5xl font-bold text-status-danger data-font" : "text-5xl font-bold text-amber-500 data-font";
+
+            document.getElementById('dash-hr').innerHTML = `${d.hr} <span class="text-sm font-normal text-slate-600">bpm</span>`;
+            document.getElementById('dash-hrv').innerHTML = `${d.hrv} <span class="text-sm font-normal text-slate-600">ms</span>`;
+            document.getElementById('dash-bp').innerText = d.bp;
+        }
+
+        function applyTimeRange(days, btn) {
+            if (btn) { document.querySelectorAll('#range-selector button').forEach(b => b.classList.remove('range-btn-active')); btn.classList.add('range-btn-active'); }
+            const history = userDataMap[activeUserId].history || [];
+            const cutoffDate = new Date(); cutoffDate.setDate(cutoffDate.getDate() - days);
+            const filteredData = history.filter(d => new Date(d.date) >= cutoffDate);
+            renderChart(filteredData); renderTable(filteredData);
+        }
+
+        function applyCustomDate() {
+            const startVal = document.getElementById('start-date').value;
+            const endVal = document.getElementById('end-date').value;
+            if (!startVal || !endVal) return alert("Please select dates");
+            const startDate = new Date(startVal);
+            const endDate = new Date(endVal);
+            endDate.setHours(23, 59, 59);
+            if (startDate > endDate) return alert("Start > End");
+            const history = userDataMap[activeUserId].history || [];
+            const filteredData = history.filter(d => {
+                const itemDate = new Date(d.date);
+                return itemDate >= startDate && itemDate <= endDate;
+            });
+            renderChart(filteredData); renderTable(filteredData);
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('historyChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            const t = i18n[currentLang];
+            if (data.length === 0) {
+                chartInstance = new Chart(ctx, {
+                    type: 'line', data: { labels: [], datasets: [] },
+                    options: { plugins: { title: { display: true, text: 'No Data' } } }
+                });
+                return;
+            }
+
+            const revData = [...data].reverse();
+            const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+            if (currentChartType === 'mi') { gradient.addColorStop(0, 'rgba(34, 211, 238, 0.5)'); gradient.addColorStop(1, 'rgba(15, 23, 42, 0.0)'); }
+            else { gradient.addColorStop(0, 'rgba(245, 158, 11, 0.5)'); gradient.addColorStop(1, 'rgba(15, 23, 42, 0.0)'); }
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: revData.map(d => d.date.slice(5)), datasets: [{ label: currentChartType === 'mi' ? t.chart_mi : t.chart_edema, data: revData.map(d => d[currentChartType]), borderColor: currentChartType === 'mi' ? '#22d3ee' : '#f59e0b', backgroundColor: gradient, fill: true, tension: 0.4 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' } }, x: { grid: { display: false } } } }
+            });
+        }
+
+        function renderTable(data) {
+            if (data.length === 0) {
+                document.getElementById('history-table-body').innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-500">No Data</td></tr>';
+                return;
+            }
+            document.getElementById('history-table-body').innerHTML = data.map(r => `<tr class="hover:bg-slate-800/50 transition-all border-b border-slate-800"><td class="p-4 data-font text-slate-300">${r.date}</td><td class="p-4 text-primary-cyan font-bold">${r.mi}%</td><td class="p-4 text-amber-500 font-bold">Lv.${r.edema}</td><td class="p-4 text-slate-400">${r.hr}</td><td class="p-4 text-slate-400">${r.hrv}</td><td class="p-4 text-slate-400">${r.bp}</td></tr>`).join('');
+        }
+
+        async function startCamera() {
+            const overlay = document.getElementById('camera-overlay');
+            const video = document.getElementById('webcam-video');
+            const statusText = document.getElementById('scan-status-text');
+            const t = i18n[currentLang];
+
+            overlay.classList.remove('hidden');
+            statusText.innerHTML = `${t.scan_init}`;
+            statusText.className = "absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/60 px-6 py-4 rounded-lg border border-white/20 text-white text-center";
+
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("Error: Camera not supported or blocked.");
+                overlay.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoStream = stream;
+                video.srcObject = stream;
+
+                statusText.innerHTML = `<i class="fas fa-circle-notch fa-spin mr-2"></i>${t.scan_analyzing}`;
+                statusText.className = "absolute top-20 left-1/2 transform -translate-x-1/2 bg-black/60 px-6 py-2 rounded-full border border-primary-cyan/50 text-primary-cyan text-sm font-mono tracking-widest shadow-lg";
+
+                setTimeout(() => {
+                    const newMI = Math.floor(Math.random() * 20) + 5;
+                    const newEdema = Math.floor(Math.random() * 3) + 1;
+                    const today = new Date().toISOString().split('T')[0];
+                    const newData = { date: today, mi: newMI, edema: newEdema, hr: 75, hrv: 50, bp: "120/80" };
+
+                    if (!userDataMap[activeUserId].history) userDataMap[activeUserId].history = [];
+                    userDataMap[activeUserId].history.unshift(newData);
+                    saveData();
+
+                    statusText.innerHTML = `<i class="fas fa-check mr-2"></i>${t.scan_complete}`;
+                    statusText.className = "absolute top-20 left-1/2 transform -translate-x-1/2 bg-emerald-500/90 px-6 py-2 rounded-full border border-emerald-400 text-white text-sm font-mono tracking-widest shadow-lg font-bold";
+
+                    setTimeout(() => {
+                        stopCamera();
+                        alert(`Complete!\nMI: ${newMI}%\nEdema: Lv.${newEdema}`);
+                        if (currentRole !== 'admin') navTo('dashboard');
+                    }, 1500);
+
+                }, 4000);
+
+            } catch (err) {
+                console.error("Camera Error:", err);
+                alert("Camera Failed!");
+                stopCamera();
+            }
+        }
+
+        function stopCamera() {
+            const overlay = document.getElementById('camera-overlay');
+            const video = document.getElementById('webcam-video');
+            overlay.classList.add('hidden');
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            video.srcObject = null;
+        }
+
+        function changeAdminUser(uid) { activeUserId = uid; updateMedicalDisplay(); applyTimeRange(30); }
+        function setChartType(t) { currentChartType = t; applyTimeRange(30); }
+        function toggleFamilyText(c) { document.getElementById('family-text').classList.toggle('hidden', !c); }
+        function toggleCustomDate() { document.getElementById('custom-date-wrap').classList.toggle('hidden'); }
+        function saveData() { localStorage.setItem('health_db_v12_bi', JSON.stringify(userDataMap)); }
+
+        function updateMedicalDisplay() {
+            const panel = document.getElementById('admin-med-block');
+            const textEl = document.getElementById('admin-med-display');
+            if (userDataMap[loggedInUser].role === 'admin') {
+                panel.classList.remove('hidden');
+                const medStr = userDataMap[activeUserId].medicalStr;
+                textEl.innerText = medStr ? medStr : i18n[currentLang].med_none;
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+
+        function loadProfile() {
+            const u = userDataMap[loggedInUser];
+            document.getElementById('prof-name').value = u.name;
+            document.getElementById('prof-birth').value = u.birth || "1950-01-01";
+            document.getElementById('prof-height').value = u.height || 175;
+            document.getElementById('prof-weight').value = u.weight || 70;
+            document.getElementById('prof-gender').value = u.gender || 'male';
+            updateAge();
+        }
+
+        function saveProfile() {
+            const u = userDataMap[loggedInUser];
+            const t = i18n[currentLang];
+            u.name = document.getElementById('prof-name').value;
+            u.height = document.getElementById('prof-height').value;
+            u.weight = document.getElementById('prof-weight').value;
+            u.birth = document.getElementById('prof-birth').value;
+            u.gender = document.getElementById('prof-gender').value;
+
+            // Save Medical String (Storing raw bilingual might be tricky, saving simple text)
+            const medList = [];
+            // Simple approach: Save checks. In real app, separate logic.
+            // For now, we save a string. To make it truly bilingual, ideally save codes.
+            // But preserving original logic:
+            if (document.getElementById('med-hy').checked) medList.push(currentLang === 'zh' ? "高血壓" : "Hypertension");
+            if (document.getElementById('med-di').checked) medList.push(currentLang === 'zh' ? "糖尿病" : "Diabetes");
+            if (document.getElementById('med-ck').checked) medList.push(currentLang === 'zh' ? "慢性腎臟病" : "CKD");
+            if (document.getElementById('family-check').checked) {
+                const famText = document.getElementById('family-text').value.trim();
+                if (famText) medList.push((currentLang === 'zh' ? "家族史: " : "Family Hist: ") + famText);
+            }
+            u.medicalStr = medList.join(", ");
+
+            saveData(); alert(currentLang === 'zh' ? "已儲存" : "Saved!");
+            setupApp();
+        }
+
+        function updateAge() {
+            const b = new Date(document.getElementById('prof-birth').value);
+            document.getElementById('age-field').value = new Date().getFullYear() - b.getFullYear();
+        }
+
+        function renderAdminUserTable() {
+            const t = i18n[currentLang];
+            document.getElementById('admin-user-list').innerHTML = Object.keys(userDataMap).map(uid => {
+                const u = userDataMap[uid];
+                const isSelf = uid === loggedInUser;
+                let switchBtnHtml = '';
+                if (u.role === 'admin') {
+                    switchBtnHtml = `<button onclick="toggleUserRole('${uid}')" ${isSelf ? 'disabled class="opacity-30 cursor-not-allowed border border-amber-500/30 text-amber-500 px-2 py-1 rounded text-xs"' : 'class="text-amber-500 hover:text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-xs hover:bg-amber-500/10 transition-colors"'} >${t.btn_downgrade}</button>`;
+                } else {
+                    switchBtnHtml = `<button onclick="toggleUserRole('${uid}')" class="text-emerald-500 hover:text-emerald-300 border border-emerald-500/30 px-2 py-1 rounded text-xs hover:bg-emerald-500/10 transition-colors">${t.btn_upgrade}</button>`;
+                }
+
+                return `
+                        <tr class="hover:bg-slate-800/30 border-b border-slate-800">
+                            <td class="p-4 font-bold text-primary-cyan">${uid}</td>
+                            <td class="p-4">${u.name}</td>
+                            <td class="p-4 text-xs text-slate-400">${u.regDate || '-'}</td>
+                            <td class="p-4 uppercase text-[10px]"><span class="bg-slate-700 px-2 py-0.5 rounded">${u.role}</span></td>
+                            <td class="p-4 flex gap-2 items-center">
+                                ${switchBtnHtml}
+                                <button onclick="deleteUser('${uid}')" ${isSelf ? 'disabled class="opacity-30 text-red-500 border border-red-500/30 px-2 py-1 rounded text-xs"' : 'class="text-red-500 hover:text-red-400 text-xs border border-red-500/30 px-2 py-1 rounded"'} >${t.btn_delete}</button>
+                            </td>
+                        </tr>
+                    `;
+            }).join('');
+        }
+
+        function toggleUserRole(uid) {
+            if (uid === loggedInUser) return alert(currentLang === 'zh' ? "不能改自己權限" : "Cannot change own role");
+            const newRole = userDataMap[uid].role === 'admin' ? 'user' : 'admin';
+            if (confirm(currentLang === 'zh' ? "確定變更權限?" : "Confirm change role?")) {
+                userDataMap[uid].role = newRole; saveData(); renderAdminUserTable();
+            }
+        }
+        function deleteUser(u) { if (u === loggedInUser) return; if (confirm("Confirm Delete?")) { delete userDataMap[u]; saveData(); renderAdminUserTable(); } }
+        function exportCsv() {
+            const table = document.querySelector('#view-history table');
+            if (!table) return alert(currentLang === 'zh' ? "找不到表格" : "Table not found");
+            const rows = Array.from(table.querySelectorAll('tr'));
+            if (rows.length === 0) return alert(currentLang === 'zh' ? "沒有資料可匯出" : "No data to export");
+
+            const csv = rows.map(row => {
+                const cells = Array.from(row.children).map(cell => {
+                    const text = (cell.innerText || "").replace(/"/g, '""').trim();
+                    return `"${text}"`;
+                });
+                return cells.join(',');
+            }).join('\n');
+
+            const bom = "\uFEFF";
+            const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `health_export_${new Date().toISOString().slice(0,10)}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+        function logout() { location.reload(); }
+
+        // --- Auth Modals ---
+        function openAuthModal(type) {
+            document.getElementById('auth-modal').classList.remove('hidden');
+            document.getElementById('modal-content-pass').classList.toggle('hidden', type !== 'pass');
+            document.getElementById('modal-content-id').classList.toggle('hidden', type !== 'id');
+            document.getElementById('modal-content-recovery').classList.add('hidden');
+            document.getElementById('auth-modal-title').innerText = type === 'pass' ? i18n[currentLang].modal_title_pass : i18n[currentLang].modal_title_id;
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.querySelectorAll('#auth-modal input').forEach(i => i.value = '');
+            document.getElementById('rec-step-1').classList.remove('hidden');
+            document.getElementById('rec-step-2').classList.add('hidden');
+            document.getElementById('rec-step-3').classList.add('hidden');
+        }
+
+        function submitAuthChange(type) {
+            const u = userDataMap[loggedInUser];
+            if (type === 'pass') {
+                const oldP = document.getElementById('modal-old-pass').value;
+                const newP = document.getElementById('modal-new-pass').value;
+                const confP = document.getElementById('modal-confirm-pass').value;
+                if (oldP !== u.pass) return alert("Old Pass Error");
+                if (newP.length < 4) return alert("Too short");
+                if (newP !== confP) return alert("Mismatch");
+                u.pass = newP; saveData(); alert("Success"); closeAuthModal();
+            }
+            if (type === 'id') {
+                const newId = document.getElementById('modal-new-id').value.trim();
+                if (!newId) return alert("Empty ID");
+                if (userDataMap[newId]) return alert("ID Exists");
+                userDataMap[newId] = userDataMap[loggedInUser]; delete userDataMap[loggedInUser];
+                saveData(); alert("ID Changed. Relogin."); logout();
+            }
+        }
+
+        let recoveryUserId = '';
+        function openRecoveryModal() {
+            document.getElementById('auth-modal').classList.remove('hidden');
+            document.getElementById('modal-content-pass').classList.add('hidden');
+            document.getElementById('modal-content-id').classList.add('hidden');
+            document.getElementById('modal-content-recovery').classList.remove('hidden');
+            document.getElementById('auth-modal-title').innerText = i18n[currentLang].modal_title_rec;
+        }
+
+        function verifyRecoveryStep1() {
+            const uid = document.getElementById('rec-user-id').value.trim();
+            if (!userDataMap[uid]) return alert("ID Not Found");
+            recoveryUserId = uid;
+            const u = userDataMap[uid];
+            if (!u.securityQ || !u.securityA) return alert("No Security Q Set.");
+            document.getElementById('rec-step-1').classList.add('hidden');
+            document.getElementById('rec-step-2').classList.remove('hidden');
+            document.getElementById('rec-question-text').innerText = i18n[currentLang][u.securityQ] || i18n['zh'][u.securityQ];
+        }
+
+        function verifyRecoveryStep2() {
+            const ans = document.getElementById('rec-answer').value.trim();
+            if (ans !== userDataMap[recoveryUserId].securityA) return alert("Error");
+            document.getElementById('rec-step-2').classList.add('hidden');
+            document.getElementById('rec-step-3').classList.remove('hidden');
+        }
+
+        function submitRecoveryReset() {
+            const newP = document.getElementById('rec-new-pass').value.trim();
+            if (newP.length < 4) return alert("Too short");
+            userDataMap[recoveryUserId].pass = newP; saveData(); alert("Reset Success");
+            closeAuthModal(); document.getElementById('login-user').value = recoveryUserId;
+        }
+
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock-display').innerText = now.toLocaleString(currentLang === 'zh' ? 'zh-TW' : 'en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+        }, 1000);
+
+        document.addEventListener('DOMContentLoaded', () => setLanguage('zh'));
+    </script>
+</body>
+</html>
