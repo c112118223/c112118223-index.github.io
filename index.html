@@ -964,6 +964,10 @@
             });
         }
 
+        function isPasswordValid(pwd) {
+            return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(pwd);
+        }
+
         function toggleDrawer(force) {
             const isOpen = document.body.classList.contains('drawer-open');
             const next = typeof force === 'boolean' ? force : !isOpen;
@@ -984,6 +988,7 @@
             const sa = document.getElementById('reg-security-a').value.trim();
 
             if (!id || !pass || !name || !sa) return alert(currentLang === 'zh' ? "請填寫所有欄位" : "Please fill all fields");
+            if (!isPasswordValid(pass)) return alert(currentLang === 'zh' ? "密碼需包含大小寫英文與數字（至少 8 碼）" : "Password must include uppercase, lowercase, and numbers (min 8 chars)");
             if (userDataMap[id]) return alert(currentLang === 'zh' ? "ID 已存在" : "ID already exists");
 
             userDataMap[id] = {
@@ -1417,7 +1422,7 @@
                 const newP = document.getElementById('modal-new-pass').value;
                 const confP = document.getElementById('modal-confirm-pass').value;
                 if (oldP !== u.pass) return alert("Old Pass Error");
-                if (newP.length < 4) return alert("Too short");
+                if (!isPasswordValid(newP)) return alert(currentLang === 'zh' ? "密碼需包含大小寫英文與數字（至少 8 碼）" : "Password must include uppercase, lowercase, and numbers (min 8 chars)");
                 if (newP !== confP) return alert("Mismatch");
                 u.pass = newP; saveData(); alert("Success"); closeAuthModal();
             }
@@ -1459,7 +1464,7 @@
 
         function submitRecoveryReset() {
             const newP = document.getElementById('rec-new-pass').value.trim();
-            if (newP.length < 4) return alert("Too short");
+            if (!isPasswordValid(newP)) return alert(currentLang === 'zh' ? "密碼需包含大小寫英文與數字（至少 8 碼）" : "Password must include uppercase, lowercase, and numbers (min 8 chars)");
             userDataMap[recoveryUserId].pass = newP; saveData(); alert("Reset Success");
             closeAuthModal(); document.getElementById('login-user').value = recoveryUserId;
         }
