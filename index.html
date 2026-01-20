@@ -287,6 +287,23 @@
         gap: 0.5rem;
         justify-content: center;
     }
+    .admin-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        overflow: hidden;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(11, 91, 211, 0.15);
+        border: 1px solid rgba(11, 91, 211, 0.35);
+    }
+    .admin-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
     .lv-prefix {
         font-size: 0.45em;
         letter-spacing: 0.12em;
@@ -508,7 +525,11 @@
 
         <aside id="sidebar-drawer" class="w-72 glass-panel p-6 flex flex-col shrink-0">
             <div class="flex flex-col items-center mb-10 border-b border-white/10 pb-8">
-                <div id="user-avatar" class="w-20 h-20 rounded-full bg-primary-cyan flex items-center justify-center text-slate-900 font-bold text-3xl mb-4 shadow-[0_0_20px_rgba(11,91,211,0.5)]">SM</div>
+                <div id="user-avatar" class="w-20 h-20 rounded-full bg-primary-cyan flex items-center justify-center text-slate-900 font-bold text-3xl mb-4 shadow-[0_0_20px_rgba(11,91,211,0.5)] overflow-hidden cursor-pointer" title="變更頭貼">
+                    <img id="user-avatar-img" class="w-full h-full object-cover hidden" alt="avatar" />
+                    <i id="user-avatar-icon" class="fas fa-user-astronaut text-3xl"></i>
+                </div>
+                <input id="avatar-input" type="file" accept="image/*" class="hidden" />
                 <h2 id="display-name" class="text-2xl font-bold mb-1">--</h2>
                 <p id="display-id" class="text-sm text-slate-500">ID: --</p>
             </div>
@@ -618,6 +639,7 @@
                 <div id="admin-selector-wrap" class="hidden mb-4 p-4 glass-panel bg-primary-cyan/5 border-primary-cyan/20 flex items-center gap-4">
                     <i class="fas fa-users-cog text-primary-cyan text-xl"></i>
                     <span class="text-sm font-bold" data-i18n="admin_select_user">切換查看對象：</span>
+                    <div id="admin-user-avatar" class="admin-avatar hidden"></div>
                     <select id="admin-user-selector" onchange="changeAdminUser(this.value)" class="!w-64 !py-1.5 !text-sm"></select>
                 </div>
 
@@ -727,6 +749,7 @@
                     <table class="table table-dark table-hover align-middle mb-0 w-full text-left text-sm">
                         <thead class="bg-slate-800 text-primary-cyan font-bold uppercase">
                             <tr>
+                                <th class="p-4" data-i18n="th_adm_avatar">頭像</th>
                                 <th class="p-4" data-i18n="th_adm_id">帳號 ID</th>
                                 <th class="p-4" data-i18n="th_adm_name">姓名</th>
                                 <th class="p-4" data-i18n="th_adm_reg">註冊時間</th>
@@ -843,7 +866,7 @@
                 med_hypertension: "高血壓 (Hypertension)", med_diabetes: "糖尿病 (Diabetes)", med_ckd: "慢性腎臟病 (CKD)", med_family_title: "其他疾病家族史",
                 med_history_title: "特殊病史 (Medical History)", med_none: "無",
                 // Admin Table
-                admin_panel_title: "管理員面板：帳號管理", th_adm_id: "帳號 ID", th_adm_name: "姓名", th_adm_reg: "註冊時間", th_adm_role: "權限", th_adm_action: "操作",
+                admin_panel_title: "管理員面板：帳號管理", th_adm_avatar: "頭像", th_adm_id: "帳號 ID", th_adm_name: "姓名", th_adm_reg: "註冊時間", th_adm_role: "權限", th_adm_action: "操作",
                 btn_upgrade: "升級 Admin", btn_downgrade: "降級 User", btn_delete: "刪除",
                 // Security & Modals
                 sec_zone_title: "帳號安全管理區", sec_manage_id: "管理帳號 ID", sec_manage_pass: "管理密碼", btn_change_id: "更改使用者 ID", btn_change_pass: "更改登入密碼",
@@ -878,7 +901,7 @@
                 med_hypertension: "Hypertension", med_diabetes: "Diabetes", med_ckd: "Chronic Kidney Disease (CKD)", med_family_title: "Family Medical History",
                 med_history_title: "Medical History", med_none: "None",
                 // Admin Table
-                admin_panel_title: "Admin Panel: User Management", th_adm_id: "Account ID", th_adm_name: "Name", th_adm_reg: "Reg. Date", th_adm_role: "Role", th_adm_action: "Action",
+                admin_panel_title: "Admin Panel: User Management", th_adm_avatar: "Avatar", th_adm_id: "Account ID", th_adm_name: "Name", th_adm_reg: "Reg. Date", th_adm_role: "Role", th_adm_action: "Action",
                 btn_upgrade: "Promote Admin", btn_downgrade: "Demote User", btn_delete: "Delete",
                 // Security & Modals
                 sec_zone_title: "Account Security Zone", sec_manage_id: "Manage User ID", sec_manage_pass: "Manage Password", btn_change_id: "Change User ID", btn_change_pass: "Change Password",
@@ -962,6 +985,7 @@
             document.querySelectorAll('#reg-security-q option').forEach(opt => {
                 opt.innerText = data[opt.value];
             });
+            if (loggedInUser) setupAvatar();
         }
 
         function isPasswordValid(pwd) {
@@ -1019,6 +1043,81 @@
             setupApp();
         }
 
+        function cropToSquare(dataUrl, size = 256) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const minSide = Math.min(img.width, img.height);
+                    const sx = Math.floor((img.width - minSide) / 2);
+                    const sy = Math.floor((img.height - minSide) / 2);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = size;
+                    canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+                    resolve(canvas.toDataURL('image/jpeg', 0.9));
+                };
+                img.src = dataUrl;
+            });
+        }
+
+        function setupAvatar() {
+            const user = userDataMap[loggedInUser];
+            const avatarWrap = document.getElementById('user-avatar');
+            const avatarImg = document.getElementById('user-avatar-img');
+            const avatarIcon = document.getElementById('user-avatar-icon');
+            const avatarInput = document.getElementById('avatar-input');
+
+            if (!avatarWrap || !avatarImg || !avatarIcon || !avatarInput) return;
+
+            const targetId = user.role === 'admin' ? (activeUserId || loggedInUser) : loggedInUser;
+            const saved = localStorage.getItem(`avatar_${targetId}`);
+            if (user.role === 'admin') {
+                if (saved) {
+                    avatarImg.src = saved;
+                    avatarImg.classList.remove('hidden');
+                    avatarIcon.classList.add('hidden');
+                } else {
+                    avatarImg.classList.add('hidden');
+                    avatarIcon.className = 'fas fa-user-shield text-3xl';
+                    avatarIcon.classList.remove('hidden');
+                }
+                avatarWrap.classList.remove('cursor-pointer');
+                avatarWrap.title = '';
+                avatarWrap.onclick = null;
+                avatarInput.onchange = null;
+                return;
+            }
+
+            if (saved) {
+                avatarImg.src = saved;
+                avatarImg.classList.remove('hidden');
+                avatarIcon.classList.add('hidden');
+            } else {
+                avatarImg.classList.add('hidden');
+                avatarIcon.className = 'fas fa-user-astronaut text-3xl';
+                avatarIcon.classList.remove('hidden');
+            }
+
+            avatarWrap.classList.add('cursor-pointer');
+            avatarWrap.title = currentLang === 'zh' ? '點擊更換頭貼' : 'Click to change avatar';
+            avatarWrap.onclick = () => avatarInput.click();
+            avatarInput.onchange = () => {
+                const file = avatarInput.files && avatarInput.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async () => {
+                    const dataUrl = reader.result;
+                    const cropped = await cropToSquare(dataUrl);
+                    localStorage.setItem(`avatar_${loggedInUser}`, cropped);
+                    avatarImg.src = cropped;
+                    avatarImg.classList.remove('hidden');
+                    avatarIcon.classList.add('hidden');
+                };
+                reader.readAsDataURL(file);
+            };
+        }
+
         function setupApp() {
             const user = userDataMap[loggedInUser];
             const selector = document.getElementById('admin-user-selector');
@@ -1031,9 +1130,6 @@
             if (weatherTimer) clearInterval(weatherTimer);
             updateWeather();
             weatherTimer = setInterval(updateWeather, 10 * 60 * 1000);
-            if (weatherTimer) clearInterval(weatherTimer);
-            updateWeather();
-            weatherTimer = setInterval(updateWeather, 10 * 60 * 1000);
 
             if (user.role === 'admin') {
                 Object.keys(userDataMap).forEach(k => {
@@ -1041,9 +1137,11 @@
                 });
                 if (selector.options.length > 0) activeUserId = selector.options[0].value;
                 navTo('admin-manage');
+                updateAdminAvatar(activeUserId);
             } else {
                 navTo('dashboard');
             }
+            setupAvatar();
             setLanguage(currentLang); // Apply lang to new elements
         }
 
@@ -1200,7 +1298,7 @@
 
             chartInstance = new Chart(ctx, {
                 type: 'line',
-                data: { labels: revData.map(d => d.date.slice(5)), datasets: [{ label: currentChartType === 'mi' ? t.chart_mi : t.chart_edema, data: revData.map(d => d[currentChartType]), borderColor: currentChartType === 'mi' ? '#22d3ee' : '#f59e0b', backgroundColor: gradient, fill: true, tension: 0.4 }] },
+                data: { labels: revData.map(d => d.date.slice(5)), datasets: [{ label: currentChartType === 'mi' ? t.chart_mi : t.chart_edema, data: revData.map(d => d[currentChartType]), borderColor: currentChartType === 'mi' ? '#22d3ee' : '#f59e0b', backgroundColor: gradient, fill: true, tension: 0.6 }] },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.1)' } }, x: { grid: { display: false } } } }
             });
         }
@@ -1276,7 +1374,19 @@
             video.srcObject = null;
         }
 
-        function changeAdminUser(uid) { activeUserId = uid; updateMedicalDisplay(); applyTimeRange(30); }
+        function changeAdminUser(uid) { activeUserId = uid; updateMedicalDisplay(); applyTimeRange(30); setupAvatar(); updateAdminAvatar(uid); }
+
+        function updateAdminAvatar(uid) {
+            const wrap = document.getElementById('admin-user-avatar');
+            if (!wrap) return;
+            const avatar = localStorage.getItem(`avatar_${uid}`);
+            wrap.classList.remove('hidden');
+            if (avatar) {
+                wrap.innerHTML = `<img src="${avatar}" alt="avatar">`;
+            } else {
+                wrap.innerHTML = `<i class="fas fa-user text-xs text-primary-cyan"></i>`;
+            }
+        }
         function setChartType(t) { currentChartType = t; applyTimeRange(30); }
         function toggleFamilyText(c) { document.getElementById('family-text').classList.toggle('hidden', !c); }
         function toggleCustomDate() { document.getElementById('custom-date-wrap').classList.toggle('hidden'); }
@@ -1341,6 +1451,10 @@
             document.getElementById('admin-user-list').innerHTML = Object.keys(userDataMap).map(uid => {
                 const u = userDataMap[uid];
                 const isSelf = uid === loggedInUser;
+                const avatar = localStorage.getItem(`avatar_${uid}`);
+                const avatarHtml = avatar
+                    ? `<div class="admin-avatar"><img src="${avatar}" alt="avatar"></div>`
+                    : `<div class="admin-avatar"><i class="fas fa-user text-xs text-primary-cyan"></i></div>`;
                 let switchBtnHtml = '';
                 if (u.role === 'admin') {
                     switchBtnHtml = `<button onclick="toggleUserRole('${uid}')" ${isSelf ? 'disabled class="opacity-30 cursor-not-allowed border border-amber-500/30 text-amber-500 px-2 py-1 rounded text-xs"' : 'class="text-amber-500 hover:text-amber-300 border border-amber-500/30 px-2 py-1 rounded text-xs hover:bg-amber-500/10 transition-colors"'} >${t.btn_downgrade}</button>`;
@@ -1350,6 +1464,7 @@
 
                 return `
                         <tr class="hover:bg-slate-800/30 border-b border-slate-800">
+                            <td class="p-4">${avatarHtml}</td>
                             <td class="p-4 font-bold text-primary-cyan">${uid}</td>
                             <td class="p-4">${u.name}</td>
                             <td class="p-4 text-xs text-slate-400">${u.regDate || '-'}</td>
